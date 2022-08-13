@@ -1,22 +1,22 @@
 use std::env;
 
+#[derive(Debug)]
 enum Parses{
     Value,
     Pack
 }
 
+#[derive(Debug)]
 struct Config {
     pack_size: u32
 }
+
 fn main() {
-    let mut args = env::args();
     let mut aux = Parses::Value;
     let mut config = Config{pack_size : 64}; 
     let mut vals = Vec::<u32>::new();
 
-    args.next(); // removing name of executable
-
-    for i in args { // traverse the args for parameters
+    for i in env::args().skip(1) { // traverse the args for parameters
         if i == "-p" {
             aux = Parses::Pack;
             continue;
@@ -26,9 +26,7 @@ fn main() {
             Parses::Pack => {
                 config.pack_size = i.parse::<u32>().expect("Pack value must be a positive integer");
             },
-            Parses::Value => {
-                vals.push(i.parse::<u32>().expect("Pack value must be a positive integer"))
-            }
+            Parses::Value => vals.push(i.parse::<u32>().expect("Pack value must be a positive integer"))
         }
         
     }
