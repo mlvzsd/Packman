@@ -1,6 +1,6 @@
-use std::env;
-use std::io;
-use std::fs::*;
+use std::{
+    env, io::*, fs::*
+};
 
 #[derive(Debug, PartialEq)]
 enum Parses{
@@ -16,10 +16,15 @@ struct Config {
     from_file: Option<String>
 }
 
+fn reader(use_file: bool, br: Option<&mut BufReader<File>>, input: &mut String) -> Result<usize> {
+    if use_file { br.expect("unreachable").read_line(input) }
+    else { stdin().read_line(input) }
+}
+
 fn main() {
     let mut aux = Parses::Value;
     let mut config = Config{pack_size : 64,
-                            use_file : false,
+                            use_file  : false,
                             from_file : None}; 
     let mut vals = Vec::<u32>::new();
 
@@ -41,33 +46,36 @@ fn main() {
         match aux {
             Parses::Pack => config.pack_size = i.parse::<u32>().expect("Pack value must be a positive integer"),
             Parses::Value => vals.push(i.parse::<u32>().expect("Pack value must be a positive integer")),
-            Parses::FromFile => config.from_file = Some(i)
+            Parses::FromFile => config.from_file = Some(String::from(i))
         }
         
     }
+
+    // let cfg = config;
+
     if config.use_file {
         
+        let (use_file, mut br) = match config.from_file {
+            Some(p) => (true,  Some(BufReader::new(File::open(p).expect("Cold not open file")))),
+            None    => (false, None)
+        };
+
         loop {
             let mut input = String::new();
-            let file = match config.from_file {
-                Some(_) => String::new(),  //File::open(path).expect("Could not open file").
-                None => String::new()// 
-            };
-            match io::stdin().read_line(&mut input) {
-                Ok(_) => {
+            
+            match reader(use_file, br.as_mut(), &mut input) {
+                Ok(0) => { break; }
+                Ok(n) => {
                     if !input.is_empty() {
-                        vals.push( input.trim().parse::<u32>().expect("Pack Value must be positive integers"));
-                    }
-                    else {
-                        break;
+                        vals.push(input.trim().parse::<u32>().expect("Pack Value must be positive integers"));
                     }
                 },
-                Err(_) =>  {}
+                Err(_) => { }
             }
         } 
     }
     for i in vals {
-        let quotient = i/config.pack_size; 
+        let quotient  = i/config.pack_size; 
         let remainder = i%config.pack_size;
         println!("packs: {} remainder: {}", quotient, remainder);
     }
