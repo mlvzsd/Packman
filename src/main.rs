@@ -1,63 +1,71 @@
 use std::{
-    env, io::*, fs::*
+    env, io::*, fs::*, process::exit
 };
 
 #[derive(Debug, PartialEq)]
 enum Parses{
     Value,
     Pack,
-    FromFile
+    FilePath
+}
+
+#[derive(Debug, PartialEq)]
+enum InputMethod{
+    Args,
+    Stdin,
+    File(String)
 }
 
 #[derive(Debug)]
 struct Config {
     pack_size: u32,
-    use_file: bool,
-    from_file: Option<String>
+    input: InputMethod
 }
 
 fn reader(use_file: bool, br: Option<&mut BufReader<File>>, input: &mut String) -> Result<usize> {
-    if use_file { br.expect("unreachable").read_line(input) }
-    else { stdin().read_line(input) }
+    if use_file {
+        br.expect("unreachable").read_line(input)
+    } else {
+        stdin().read_line(input)
+    }
 }
 
 fn main() {
-    let mut aux = Parses::Value;
-    let mut config = Config{pack_size : 64,
-                            use_file  : false,
-                            from_file : None}; 
+    let mut parse_mode = Parses::Value;
+    let mut config = Config {
+        pack_size : 64,
+        input     : InputMethod::Args
+    };
     let mut vals = Vec::<u32>::new();
 
     for i in env::args().skip(1) { // traverse the args for parameters
         if i == "-p" {
-            aux = Parses::Pack;
+            parse_mode = Parses::Pack;
             continue;
         }
         else if i == "-i" {
-            config.use_file = true;
+            config.input = InputMethod::Stdin;
             continue;
         }
         else if i == "-f" {
-            config.use_file = true;
-            aux = Parses::FromFile;
+            parse_mode = Parses::FilePath;
             continue;
         }
 
-        match aux {
-            Parses::Pack => config.pack_size = i.parse::<u32>().expect("Pack value must be a positive integer"),
-            Parses::Value => vals.push(i.parse::<u32>().expect("Pack value must be a positive integer")),
-            Parses::FromFile => config.from_file = Some(String::from(i))
+        match parse_mode {
+            Parses::FilePath => config.input = InputMethod::File(String::from(i)),
+            Parses::Pack     => config.pack_size = i.parse::<u32>().expect("Pack value must be a positive integer"),
+            Parses::Value    => vals.push(i.parse::<u32>().expect("Pack value must be a positive integer")),
         }
         
     }
 
-    // let cfg = config;
-
-    if config.use_file {
+    if config.input != InputMethod::Args {
         
-        let (use_file, mut br) = match config.from_file {
-            Some(p) => (true,  Some(BufReader::new(File::open(p).expect("Cold not open file")))),
-            None    => (false, None)
+        let (use_file, mut br) = match config.input {
+            InputMethod::File(path) => (true,  Some( BufReader::new(File::open(path).expect("Cold not open file")) )),
+            InputMethod::Stdin      => (false, None),
+            InputMethod::Args       => {exit(1)} // Unreachable due if above
         };
 
         loop {
@@ -65,7 +73,7 @@ fn main() {
             
             match reader(use_file, br.as_mut(), &mut input) {
                 Ok(0) => { break; }
-                Ok(n) => {
+                Ok(_) => {
                     if !input.is_empty() {
                         vals.push(input.trim().parse::<u32>().expect("Pack Value must be positive integers"));
                     }
